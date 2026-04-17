@@ -1,6 +1,6 @@
 # Test Forge -- Testing Toolkit Skill for Claude Code
 
-test documentation skills -- generate comprehensive test documents from Jira tickets, Confluence specs, local files, or pasted text. Built for **Claude Code**.
+Test documentation skills -- generate comprehensive test documents from Jira tickets, Confluence specs, local files, or pasted text. Built for **Claude Code**.
 
 > **Human review required.** All output from these skills is AI-generated and must be treated as a **starting point, not a finished artefact**. You are responsible for reviewing, validating, and correcting everything before acting on it.
 
