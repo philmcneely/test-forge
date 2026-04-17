@@ -1,0 +1,36 @@
+# ── Filled-in credential files — NEVER commit these ─────────────────────────
+
+# VS Code MCP config (contains API tokens)
+.vscode/mcp.json
+
+# Claude Code settings (contains API tokens in "env" block)
+settings.json
+settings.local.json
+.claude/settings.json
+.claude/settings.local.json
+
+# Generic .env files (some users may copy env vars here)
+.env
+.env.*
+!.env.example
+
+# Project-level test-gen config (may contain sensitive project context)
+.test-gen.json
+
+# ── Generated output files — local only, not for the repo ────────────────────
+# Default output directory (skills write here unless overridden)
+output/
+
+# Root-level generated files (legacy / override-dir outputs)
+*_tests.md
+*_tests_*.md
+*_testdata.md
+*_clarify.md
+*_tickets.md
+mr-*_review*.md
+pasted_content_tests*.md
+
+# ── Keep example/template files in source control ────────────────────────────
+!.vscode/mcp.json.example
+!settings.json.example
+!.test-gen.example.json

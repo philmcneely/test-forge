@@ -1,0 +1,60 @@
+{
+  "env": {
+    // ── GitLab (primary SCM) ──────────────────────────────────────────────────
+    // Create a PAT at: https://gitlab.yourcompany.com/-/user_settings/personal_access_tokens
+    // Required scopes:
+    //   read_api          — required for all /mr-review runs (dry run)
+    //   read_repository   — repository content access
+    //   api               — required only for /mr-review --create (post MR comments)
+    // Minimum for dry run:    read_api
+    // Minimum for --create:   read_api + api
+    "GITLAB_TOKEN": "your-gitlab-pat-here",
+
+    // Base URL of your self-hosted GitLab instance.
+    // Not needed if your instance URL is embedded in the MR URL (it is auto-extracted).
+    // Not needed for gitlab.com.
+    "GITLAB_URL": "https://gitlab.yourcompany.com",
+
+    // ── GitHub (experimental) ─────────────────────────────────────────────────
+    // Create a classic PAT at: https://github.com/settings/tokens
+    // Required scopes:  repo  (or fine-grained: pull_requests:read + contents:read)
+    // For --create:     also add pull_requests:write
+    "GITHUB_TOKEN": "your-github-pat-here",
+
+    // Only needed for GitHub Enterprise Server — not required for github.com.
+    // "GITHUB_URL": "https://github.yourcompany.com",
+
+    // ── Jira / Confluence ─────────────────────────────────────────────────────
+    // Used by: /jira-test-gen, /jira-clarify, /confluence-test-gen,
+    //          /confluence-clarify, /confluence-breakdown, /mr-review --jira/--confluence
+    //
+    // If the mcp-atlassian MCP server is configured in .vscode/mcp.json (or equivalent),
+    // these env vars are NOT needed — the MCP server handles auth and takes precedence.
+    //
+    // Only set these if you are NOT using the MCP server (e.g. command-line only).
+    "JIRA_URL": "https://yourcompany.atlassian.net",
+    "JIRA_USERNAME": "your.email@yourcompany.com",
+    // Create an Atlassian API token at: https://id.atlassian.com/manage-profile/security/api-tokens
+    "JIRA_API_TOKEN": "your-atlassian-api-token-here",
+
+    // ── Corporate proxy / SSL ─────────────────────────────────────────────────
+    // Set SSL_CERT_FILE if your company uses a proxy that performs SSL inspection
+    // (self-signed or corporate CA cert). Provide the full path to the CA bundle.
+    // "SSL_CERT_FILE": "/path/to/corporate-ca-bundle.crt",
+
+    // Set JIRA_SSL_NO_REVOKE=true if curl fails with certificate revocation errors
+    // on a corporate proxy. This adds --ssl-no-revoke to all curl calls.
+    // "JIRA_SSL_NO_REVOKE": "true",
+
+    // ── Zephyr Scale (optional — for /jira-test-gen --create) ─────────────────
+    // Only needed if you want to auto-create Zephyr Scale test cases.
+    // Create a token at: https://smartbear.com/test-management/zephyr-scale/
+    // "ZEPHYR_API_TOKEN": "your-zephyr-token-here",
+    // "ZEPHYR_BASE_URL": "https://api.zephyrscale.smartbear.com/v2",
+
+    // ── System context (optional — for /jira-test-gen, /confluence-test-gen, /test-gen) ──
+    // Point skills at a shared system-context.md in a central location.
+    // Overrides the default cwd lookup. Can still be overridden per-run with --system-context <path>.
+    // "SYSTEM_CONTEXT_PATH": "/path/to/shared/system-context.md"
+  }
+}
