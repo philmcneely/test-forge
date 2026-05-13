@@ -586,7 +586,270 @@ Link to exploratory session recording for reproduction
 
 ---
 
-### 12. Mobile Testing
+### 12. Contract Testing
+
+**What it does:** Consumer-driven contract testing for microservice architectures. Different from API schema validation (Module 10) — contract testing verifies that a provider service still satisfies what its consumer services actually depend on.
+
+**Two approaches:**
+
+| Approach | Tool | How It Works |
+|---|---|---|
+| Consumer-driven (Pact) | Pact.js / Pact-Python | Consumer defines expected interactions → provider verifies against them |
+| Schema-first | OpenAPI diff | Compare current spec to previous version → detect breaking changes |
+
+**Why both matter:**
+
+- **Schema validation** (Module 10): "Does the API return what its spec says?" — catches implementation bugs
+- **Contract testing** (this module): "Does the API still return what Service B depends on?" — catches breaking changes between services
+
+**Flow:**
+
+```
+Consumer service defines contract
+    │ "I call GET /users/123 and expect {id, name, email}"
+    ▼
+Contract published to broker (Pact Broker or S3)
+    │
+    ▼
+Provider CI runs contract verification
+    │ "Do I still satisfy what consumers expect?"
+    │
+    ├─ Pass → deploy safe
+    └─ Fail → breaking change detected, block deploy, notify
+```
+
+**Capabilities:**
+
+| Capability | Status |
+|---|---|
+| Pact consumer test generation from BDD AC | Not built |
+| Pact provider verification in CI | Not built |
+| Pact Broker integration | Not built |
+| OpenAPI spec diff (breaking change detection) | Not built |
+| Contract status in dashboard | Not built |
+
+**Where it lives:** New module in platform server + CI integration
+
+---
+
+### 13. Test Data Management
+
+**What it does:** Manages the full test data lifecycle — generation, seeding, isolation, teardown, and masking. Test data is the #1 reason tests are flaky or unmaintainable. This module makes data a first-class concern.
+
+**Capabilities:**
+
+| Capability | Description | Status |
+|---|---|---|
+| Data factories | Generate synthetic test data per entity (users, orders, products) with realistic values | Not built |
+| Seed/teardown | Populate DB before test suite, clean up after — transaction rollback or explicit delete | Not built |
+| Data isolation | Each test gets its own data scope — no cross-test contamination | Not built |
+| PII masking | Clone prod-like data with PII replaced (names, emails, SSNs, addresses) | Not built |
+| Environment-aware | Different data sources per environment (local SQLite, dev Postgres, staging snapshot) | Not built |
+| Fixture files | JSON/YAML fixtures checked into repo, loaded at test time | Partial (both frameworks have basic fixture support) |
+| Dynamic generation | Faker.js / Faker-py for realistic random data | Not built (as module) |
+
+**Data factory pattern:**
+
+```typescript
+const user = TestData.create('user', {
+  role: 'admin',
+  status: 'active',
+  // everything else auto-generated with realistic values
+});
+
+const order = TestData.create('order', {
+  userId: user.id,
+  items: 3,
+  // generates 3 random products, calculates totals
+});
+```
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `TEST_DATA_STRATEGY` | `fixture` | `fixture`, `factory`, `snapshot`, `prod-masked` |
+| `TEST_DATA_SEED_DB` | `false` | Seed database before suite |
+| `TEST_DATA_CLEANUP` | `true` | Clean up after suite |
+| `TEST_DATA_ISOLATION` | `transaction` | `transaction` (rollback), `delete` (explicit), `none` |
+| `DB_CONNECTION_STRING` | — | Database connection for seed/teardown |
+
+**Where it lives:** New shared module used by both Playwright frameworks
+
+---
+
+### 14. Security Testing
+
+**What it does:** Automated security scanning integrated into the test pipeline. Covers OWASP Top 10 at minimum. Runs DAST scans during test execution, dependency vulnerability scanning, and generates security-focused test cases from requirements.
+
+**Layers:**
+
+| Layer | Tool | What It Catches | When It Runs |
+|---|---|---|---|
+| DAST (Dynamic) | OWASP ZAP (headless) | XSS, injection, broken auth, CSRF, misconfigs | During test execution or as server job |
+| Dependency scanning | npm audit / pip-audit / Snyk | Known CVEs in dependencies | CI on every commit |
+| Secret scanning | gitleaks / trufflehog | Hardcoded credentials in code | Pre-commit hook + CI |
+| Security test generation | LLM + OWASP checklist | Security-specific test scenarios from requirements | During test design (Module 2) |
+| Header analysis | Custom checks | Missing security headers (HSTS, CSP, X-Frame-Options) | During API/web test execution |
+
+**OWASP Top 10 coverage:**
+
+| OWASP Category | Test Approach |
+|---|---|
+| A01: Broken Access Control | Auth bypass tests, role escalation, IDOR checks |
+| A02: Cryptographic Failures | TLS validation, sensitive data exposure in responses |
+| A03: Injection | SQL injection, XSS, command injection via form inputs |
+| A04: Insecure Design | Business logic abuse scenarios from AC inversion |
+| A05: Security Misconfiguration | Header checks, default credentials, exposed endpoints |
+| A06: Vulnerable Components | Dependency scanning (npm audit / pip-audit) |
+| A07: Authentication Failures | Brute force, credential stuffing, session fixation |
+| A08: Software/Data Integrity | CSP validation, SRI checks |
+| A09: Logging Failures | Verify security events are logged (failed logins, access denials) |
+| A10: SSRF | Internal network access via user-controlled URLs |
+
+**Integration with test design:**
+
+When Module 2 (Test Design) generates the 12-section test document, Section 6 (Error Conditions) and Section 7 (Negative Tests) should include OWASP-derived scenarios. The security module provides a checklist that feeds into test design.
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `SECURITY_SCAN_ENABLED` | `false` | Enable DAST scanning |
+| `ZAP_HOST` | `http://localhost:8080` | OWASP ZAP proxy address |
+| `ZAP_API_KEY` | — | ZAP API key |
+| `DEPENDENCY_SCAN_ENABLED` | `true` | Run dependency vulnerability scan |
+| `SECRET_SCAN_ENABLED` | `true` | Run secret detection |
+| `SECURITY_SEVERITY_THRESHOLD` | `medium` | Minimum severity to fail tests (`low`, `medium`, `high`, `critical`) |
+
+**Where it lives:** New module — DAST integration in both Playwright frameworks, dependency/secret scanning in CI configs
+
+---
+
+### 15. Database Validation
+
+**What it does:** Validates the data layer directly. Tests don't just check that the API returned 200 — they verify the data was actually persisted correctly, schema migrations ran cleanly, and data integrity constraints hold.
+
+**Capabilities:**
+
+| Capability | Description | Status |
+|---|---|---|
+| Post-operation verification | After API call, query DB to verify data was persisted correctly | Not built |
+| Schema migration testing | Run migrations on clean DB, verify schema matches expected state | Not built |
+| Data integrity checks | Verify foreign keys, unique constraints, not-null constraints hold after operations | Not built |
+| Query performance validation | Flag queries exceeding duration threshold (slow query detection) | Not built |
+| Referential integrity | Verify cascading deletes, orphan prevention after operations | Not built |
+| Snapshot comparison | Compare DB state before/after operation, verify only expected changes | Not built |
+
+**Flow:**
+
+```
+Test action (e.g., POST /users creates a user)
+    │
+    ├─ API returns 201 (Module 5 verifies this)
+    │
+    ▼
+DB validation (this module)
+    │
+    ├─ Query users table: row exists with correct values?
+    ├─ Query audit_log table: creation event recorded?
+    ├─ Query related tables: no orphaned records?
+    │
+    ▼
+Pass/fail — catches bugs where API returns success but data is wrong
+```
+
+**Supported databases:**
+
+| Database | Driver | Status |
+|---|---|---|
+| PostgreSQL | pg (Node.js) / psycopg2 (Python) | Not built |
+| MySQL | mysql2 (Node.js) / mysqlclient (Python) | Not built |
+| SQLite | better-sqlite3 (Node.js) / sqlite3 (Python) | Not built |
+| MongoDB | mongodb (Node.js) / pymongo (Python) | Not built |
+| SQL Server | mssql (Node.js) / pyodbc (Python) | Not built |
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `DB_VALIDATION_ENABLED` | `false` | Enable database validation |
+| `DB_VALIDATION_CONNECTION` | — | Connection string for validation queries |
+| `DB_VALIDATION_READONLY` | `true` | Only SELECT queries allowed (safety) |
+| `DB_QUERY_TIMEOUT_MS` | `5000` | Max query duration before flagging |
+| `DB_MIGRATION_PATH` | — | Path to migration files for schema testing |
+
+**Where it lives:** New shared module used by both Playwright frameworks
+
+---
+
+### 16. CI Server Integration
+
+**What it does:** Provides CI-agnostic test runners and configuration templates for every major CI platform. The platform shouldn't assume GitHub Actions — Jenkins, GitLab CI, CircleCI, Azure Pipelines, and TeamCity are all common in enterprise.
+
+**CI platform support:**
+
+| Platform | Config File | Status |
+|---|---|---|
+| GitHub Actions | `.github/workflows/*.yml` | Built (both frameworks) |
+| Jenkins | `Jenkinsfile` | Not built |
+| GitLab CI | `.gitlab-ci.yml` | Not built |
+| CircleCI | `.circleci/config.yml` | Not built |
+| Azure Pipelines | `azure-pipelines.yml` | Not built |
+| TeamCity | `.teamcity/settings.kts` | Not built |
+| Bitbucket Pipelines | `bitbucket-pipelines.yml` | Not built |
+
+**What each CI config provides:**
+
+| Stage | Purpose |
+|---|---|
+| Install | Dependencies, browsers, Playwright install |
+| Lint + type check | Static analysis gate |
+| Unit tests | Fast feedback |
+| Smoke tests | Core path validation |
+| Full suite | Complete test execution |
+| Security scan | Dependency + secret scanning |
+| Observability upload | Metrics artifact collection |
+| Report | Zephyr/Jira/GitHub result posting |
+
+**CI-agnostic runner:**
+
+The platform should provide a single `npx qa-platform run` command that works identically regardless of CI platform. The CI config just calls this command. Environment variables control behavior.
+
+```yaml
+# Jenkins example
+pipeline {
+  stages {
+    stage('Test') {
+      steps {
+        sh 'npx qa-platform run --suite smoke --report zephyr'
+      }
+    }
+  }
+}
+```
+
+```yaml
+# GitLab CI example
+test:
+  script:
+    - npx qa-platform run --suite smoke --report zephyr
+```
+
+**Environment variables:**
+
+| Variable | Default | Description |
+|---|---|---|
+| `CI_PLATFORM` | auto-detect | `github`, `jenkins`, `gitlab`, `circleci`, `azure`, `teamcity` |
+| `CI_ARTIFACT_PATH` | `test_artifacts/` | Where to write artifacts for CI collection |
+| `CI_PARALLEL_SHARDS` | `1` | Number of parallel shards |
+| `CI_FAIL_FAST` | `false` | Stop on first failure |
+
+**Where it lives:** Platform server CLI + template configs per CI platform
+
+---
+
+### 17. Mobile Testing
 
 **What it does:** Extends the platform to native iOS and Android app testing. The upstream modules (requirements analysis, test design, BDD generation) are platform-agnostic — they don't change. Mobile testing adds native execution adapters and mobile-specific concerns.
 
@@ -626,6 +889,30 @@ Confluence spec → AC gate → BDD scenarios → ┬→ Playwright (web)
 
 ---
 
+## Module Count: 17
+
+| # | Module | Primary Repo | Status |
+|---|---|---|---|
+| 1 | Requirements Analysis | test-forge | Built |
+| 2 | Test Design | test-forge | Built |
+| 3 | Test Case Management | test-forge + Playwright frameworks | Partial |
+| 4 | Code Generation | automated-test-generation-framework | Built (Python) |
+| 5 | Execution | Playwright frameworks | Built (web) |
+| 6 | Self-Healing | Playwright frameworks | Built (basic) |
+| 7 | Defect Management | Playwright frameworks | Partial |
+| 8 | Observability | Playwright frameworks | Built |
+| 9 | Visual Regression | Playwright frameworks | Built |
+| 10 | API Testing | Playwright frameworks | Partial (mocking built, contract gen not) |
+| 11 | Exploratory Testing | ai-exploratory-testing-tool | Rudimentary |
+| 12 | Contract Testing | New | Not built |
+| 13 | Test Data Management | New | Not built |
+| 14 | Security Testing | New | Not built |
+| 15 | Database Validation | New | Not built |
+| 16 | CI Server Integration | Playwright frameworks | Partial (GitHub Actions only) |
+| 17 | Mobile Testing | New | Not built (web emulation exists) |
+
+---
+
 ## How the Repos Map to Modules
 
 | Module | test-forge | automated-test-gen | playwright-ai (Py) | playwright-ai (TS) | ai-exploratory | Platform Server |
@@ -641,6 +928,11 @@ Confluence spec → AC gate → BDD scenarios → ┬→ Playwright (web)
 | Visual Regression | — | — | Primary | Primary | — | Dashboard |
 | API Testing | — | — | Primary | Primary | — | Job queue |
 | Exploratory Testing | — | — | — | — | Primary | Job queue |
+| Contract Testing | — | — | — | — | — | Job queue + CI |
+| Test Data Management | — | — | Shared module | Shared module | — | — |
+| Security Testing | — | — | Integration | Integration | — | Job queue |
+| Database Validation | — | — | Shared module | Shared module | — | — |
+| CI Server Integration | — | — | Config templates | Config templates | — | CLI runner |
 | Mobile Testing | — | — | — | Partial (web) | — | Job queue |
 
 ---
@@ -858,6 +1150,56 @@ All variables default to disabled. Zero overhead when not configured.
 | `API_BASE_URL` | — | API Testing |
 | `API_AUTH_TOKEN` | — | API Testing |
 
+### Contract testing
+
+| Variable | Default | Modules |
+|---|---|---|
+| `PACT_ENABLED` | `false` | Contract Testing |
+| `PACT_BROKER_URL` | — | Contract Testing |
+| `PACT_BROKER_TOKEN` | — | Contract Testing |
+| `PACT_PROVIDER_NAME` | — | Contract Testing |
+| `PACT_CONSUMER_NAME` | — | Contract Testing |
+
+### Test data management
+
+| Variable | Default | Modules |
+|---|---|---|
+| `TEST_DATA_STRATEGY` | `fixture` | Test Data (`fixture`, `factory`, `snapshot`, `prod-masked`) |
+| `TEST_DATA_SEED_DB` | `false` | Test Data |
+| `TEST_DATA_CLEANUP` | `true` | Test Data |
+| `TEST_DATA_ISOLATION` | `transaction` | Test Data (`transaction`, `delete`, `none`) |
+| `DB_CONNECTION_STRING` | — | Test Data, DB Validation |
+
+### Security testing
+
+| Variable | Default | Modules |
+|---|---|---|
+| `SECURITY_SCAN_ENABLED` | `false` | Security |
+| `ZAP_HOST` | `http://localhost:8080` | Security (DAST) |
+| `ZAP_API_KEY` | — | Security (DAST) |
+| `DEPENDENCY_SCAN_ENABLED` | `true` | Security |
+| `SECRET_SCAN_ENABLED` | `true` | Security |
+| `SECURITY_SEVERITY_THRESHOLD` | `medium` | Security (`low`, `medium`, `high`, `critical`) |
+
+### Database validation
+
+| Variable | Default | Modules |
+|---|---|---|
+| `DB_VALIDATION_ENABLED` | `false` | DB Validation |
+| `DB_VALIDATION_CONNECTION` | — | DB Validation |
+| `DB_VALIDATION_READONLY` | `true` | DB Validation |
+| `DB_QUERY_TIMEOUT_MS` | `5000` | DB Validation |
+| `DB_MIGRATION_PATH` | — | DB Validation |
+
+### CI server
+
+| Variable | Default | Modules |
+|---|---|---|
+| `CI_PLATFORM` | auto-detect | CI Integration |
+| `CI_ARTIFACT_PATH` | `test_artifacts/` | CI Integration |
+| `CI_PARALLEL_SHARDS` | `1` | CI Integration |
+| `CI_FAIL_FAST` | `false` | CI Integration |
+
 ### Mobile testing
 
 | Variable | Default | Modules |
@@ -973,6 +1315,60 @@ All variables default to disabled. Zero overhead when not configured.
 | Smart baseline grouping for mobile | Medium | Reference device per form factor |
 | Approval workflow | Medium | Mark diffs as intentional vs regression |
 
+### Contract Testing (new module)
+
+| Item | Effort | Description |
+|---|---|---|
+| Pact consumer test generation | Large | Generate consumer contracts from BDD AC |
+| Pact provider verification | Medium | Verify provider against published contracts |
+| Pact Broker integration | Medium | Publish/retrieve contracts |
+| OpenAPI spec diff | Medium | Detect breaking changes between spec versions |
+| Contract status dashboard panel | Small | Pass/fail per consumer-provider pair |
+
+### Test Data Management (new module)
+
+| Item | Effort | Description |
+|---|---|---|
+| Data factory framework | Large | Entity factories with realistic defaults (Faker.js) |
+| Seed/teardown lifecycle | Medium | DB population before suite, cleanup after |
+| Data isolation strategy | Medium | Transaction rollback or explicit delete per test |
+| PII masking | Medium | Clone prod data with PII replaced |
+| Environment-aware data sources | Small | Config-driven per environment |
+| Fixture file loader | Small | JSON/YAML fixtures (extend existing basic support) |
+
+### Security Testing (new module)
+
+| Item | Effort | Description |
+|---|---|---|
+| OWASP ZAP integration | Large | DAST scanning during test execution |
+| Dependency scanning in CI | Small | npm audit / pip-audit in all CI configs |
+| Secret scanning | Small | gitleaks in pre-commit + CI |
+| OWASP Top 10 test generation | Medium | Security checklist feeding into test design |
+| Security header validation | Small | Check HSTS, CSP, X-Frame-Options during web tests |
+| Security severity gate | Small | Configurable threshold to fail/warn |
+
+### Database Validation (new module)
+
+| Item | Effort | Description |
+|---|---|---|
+| Post-operation DB verification | Medium | Query DB after API calls to verify persistence |
+| Schema migration testing | Medium | Run migrations on clean DB, verify expected state |
+| Data integrity checks | Medium | FK, unique, not-null constraint verification |
+| Slow query detection | Small | Flag queries exceeding duration threshold |
+| Multi-database driver support | Large | Postgres, MySQL, SQLite, MongoDB, SQL Server |
+
+### CI Server Integration (new module)
+
+| Item | Effort | Description |
+|---|---|---|
+| CI-agnostic runner CLI | Medium | `npx qa-platform run` works on any CI |
+| Jenkins pipeline template | Small | Jenkinsfile with all stages |
+| GitLab CI template | Small | .gitlab-ci.yml with all stages |
+| CircleCI template | Small | .circleci/config.yml |
+| Azure Pipelines template | Small | azure-pipelines.yml |
+| TeamCity template | Small | settings.kts |
+| Parallel shard support | Medium | Split test suite across CI workers |
+
 ### Mobile Testing
 
 | Item | Effort | Description |
@@ -1003,14 +1399,33 @@ All variables default to disabled. Zero overhead when not configured.
 5. Provider abstraction interface for defect management
 6. Webhook handlers for Jira + GitHub
 
-### Phase 3: API testing + visual regression (1 week)
+### Phase 3: Test data + API testing + visual regression (1-2 weeks)
 
-1. OpenAPI spec parser + contract test generation
-2. Playwright `toHaveScreenshot()` baseline diffing
-3. Visual diff gallery in dashboard
-4. API health monitoring as server job
+1. Test data factory framework (Faker.js, entity factories)
+2. Seed/teardown lifecycle hooks
+3. OpenAPI spec parser + contract test generation
+4. Playwright `toHaveScreenshot()` baseline diffing
+5. Visual diff gallery in dashboard
+6. API health monitoring as server job
 
-### Phase 4: Exploratory testing enhancement (1-2 weeks)
+### Phase 4: Security + DB validation (1-2 weeks)
+
+1. OWASP ZAP integration (DAST scanning)
+2. Dependency scanning in all CI configs
+3. OWASP Top 10 checklist feeding into test design module
+4. Post-operation DB verification framework
+5. Schema migration testing
+6. Security header validation
+
+### Phase 5: Contract testing + CI server integration (1 week)
+
+1. Pact consumer test generation from BDD AC
+2. Pact provider verification
+3. CI-agnostic runner CLI (`npx qa-platform run`)
+4. Jenkins, GitLab CI, CircleCI, Azure Pipelines templates
+5. Parallel shard support
+
+### Phase 6: Exploratory testing enhancement (1-2 weeks)
 
 1. Smart navigation strategy (state machine, not random)
 2. Charter-driven exploration from test design output
@@ -1018,7 +1433,7 @@ All variables default to disabled. Zero overhead when not configured.
 4. Auto-defect creation from exploration findings
 5. Integration with server job queue
 
-### Phase 5: Mobile testing (2-3 weeks)
+### Phase 7: Mobile testing (2-3 weeks)
 
 1. Appium adapter for iOS + Android
 2. BrowserStack App Automate integration
@@ -1026,18 +1441,21 @@ All variables default to disabled. Zero overhead when not configured.
 4. View hierarchy self-healing
 5. Mobile visual baseline grouping
 
-### Phase 6: Dashboard + end-to-end composition (1 week)
+### Phase 8: Dashboard + end-to-end composition (1 week)
 
 1. Real-time dashboard UI
 2. Full Jira + Zephyr workflow demo
 3. Full no-tools workflow demo
 4. Mobile workflow demo
-5. Document everything for conference talk / blog post
+5. Security scan demo
+6. Document everything for conference talk / blog post
 
-### Phase 7: Expand adapters (ongoing)
+### Phase 9: Expand adapters (ongoing)
 
 1. TestRail adapter for TCM
 2. GitHub Issues adapter for defect management
 3. Azure DevOps adapter for requirements + defect management
 4. TypeScript code generation mode
 5. Linear adapter
+6. Pact Broker integration
+7. Additional database drivers
