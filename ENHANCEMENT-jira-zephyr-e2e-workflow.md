@@ -220,15 +220,22 @@ Verdict: Not ready for test generation. 3 gaps need resolution.
 | qTest | REST API | Not built |
 | Local files (markdown) | File writer | test-forge — built (default output) |
 
-**Zephyr Scale API endpoints used:**
+**Zephyr Scale API endpoints:**
 
-| Endpoint | Purpose |
-|---|---|
-| `POST /testcases` | Create test case |
-| `GET /testcases` | Duplicate detection |
-| `POST /testcycles` | Create test cycle |
-| `POST /testexecutions` | Create test execution |
-| `PUT /testexecutions/{id}` | Update execution status |
+Implemented today in test-forge (`skills/jira-test-gen/sections/write.md`):
+
+| Endpoint | Purpose | Status |
+|---|---|---|
+| `POST /testcases` | Create test case | Built |
+| `GET /testcases` | Duplicate detection | Built |
+
+Planned for execution reporting (not yet implemented in any repo):
+
+| Endpoint | Purpose | Status |
+|---|---|---|
+| `POST /testcycles` | Create test cycle | Planned |
+| `POST /testexecutions` | Create test execution | Planned |
+| `PUT /testexecutions/{id}` | Update execution status | Planned |
 
 **What needs building:**
 - Result reporting back to TCM (execution status after test runs)
@@ -1111,26 +1118,30 @@ All variables default to disabled. Zero overhead when not configured.
 
 ### Jira adapter
 
-| Variable | Default | Modules |
-|---|---|---|
-| `JIRA_ENABLED` | `false` | TCM, Defect Mgmt |
-| `JIRA_BASE` | — | All Jira modules |
-| `JIRA_USER` | — | All Jira modules |
-| `JIRA_TOKEN` | — | All Jira modules |
-| `JIRA_JQL` | — | Requirements Analysis, Code Gen |
-| `JIRA_DRY_RUN` | `false` | All Jira modules |
-| `JIRA_TRANSITION_ON_PASS` | — | TCM |
-| `JIRA_TRANSITION_ON_FAIL` | — | TCM |
+`JIRA_URL`, `JIRA_USERNAME` and `JIRA_API_TOKEN` are the names test-forge already uses (see `README.md` and `settings.json.example`). The remaining variables are proposed names for modules that are not built yet.
+
+| Variable | Default | Modules | Status |
+|---|---|---|---|
+| `JIRA_URL` | — | All Jira modules | Existing |
+| `JIRA_USERNAME` | — | All Jira modules | Existing |
+| `JIRA_API_TOKEN` | — | All Jira modules | Existing |
+| `JIRA_ENABLED` | `false` | TCM, Defect Mgmt | Proposed |
+| `JIRA_JQL` | — | Requirements Analysis, Code Gen | Proposed |
+| `JIRA_DRY_RUN` | `false` | All Jira modules | Proposed |
+| `JIRA_TRANSITION_ON_PASS` | — | TCM | Proposed |
+| `JIRA_TRANSITION_ON_FAIL` | — | TCM | Proposed |
 
 ### Zephyr Scale adapter
 
-| Variable | Default | Modules |
-|---|---|---|
-| `ZEPHYR_ENABLED` | `false` | TCM |
-| `ZEPHYR_API_TOKEN` | — | TCM |
-| `ZEPHYR_BASE_URL` | `https://api.zephyrscale.smartbear.com/v2` | TCM |
-| `ZEPHYR_PROJECT_KEY` | — | TCM |
-| `ZEPHYR_DRY_RUN` | `false` | TCM |
+`ZEPHYR_API_TOKEN` and `ZEPHYR_BASE_URL` are the names test-forge already uses. The remaining variables are proposed names for modules that are not built yet.
+
+| Variable | Default | Modules | Status |
+|---|---|---|---|
+| `ZEPHYR_API_TOKEN` | — | TCM | Existing |
+| `ZEPHYR_BASE_URL` | `https://api.zephyrscale.smartbear.com/v2` | TCM | Existing |
+| `ZEPHYR_ENABLED` | `false` | TCM | Proposed |
+| `ZEPHYR_PROJECT_KEY` | — | TCM | Proposed |
+| `ZEPHYR_DRY_RUN` | `false` | TCM | Proposed |
 
 ### LLM providers
 
