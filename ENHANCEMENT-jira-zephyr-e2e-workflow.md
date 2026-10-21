@@ -826,6 +826,7 @@ The platform should provide a single `npx qa-platform run` command that works id
 ```yaml
 # Jenkins example
 pipeline {
+  agent any
   stages {
     stage('Test') {
       steps {
@@ -956,18 +957,18 @@ Confluence specification
     │
     ▼
 [Module 1: Requirements Analysis]
-    │ via /confluence-clarify
+    │ via /confluence-clarify --create
     │ Posts feedback if spec has gaps
     ▼
 [Module 2: Test Design]
-    │ via /confluence-breakdown → stories with BDD AC
+    │ via /confluence-breakdown --create → stories with BDD AC
     │ via /confluence-test-gen → 12-section test doc
     ▼
 Stories created in Jira
     │
     ▼
 [Module 1: Requirements Analysis — AC gate]
-    │ via /jira-clarify
+    │ via /jira-clarify --create
     │ Validates each story's AC, comments if not ready
     ▼
 [Module 3: Test Case Management]
@@ -1074,7 +1075,7 @@ Dashboard: same panels, filtered by platform
 
 1. **Atlassian developer instance (free)** — `developer.atlassian.com` provides a free Jira Cloud instance. Add Zephyr Scale from the Marketplace (30-day free trial). Full test environment at $0.
 
-2. **Mock-based development** — Build against the documented Zephyr Scale API v2 spec. Unit tests mock all HTTP calls. `ZEPHYR_DRY_RUN=true` for integration paths. Validate with trial when ready.
+2. **Mock-based development** — Build against the documented Zephyr Scale API v2 spec. Unit tests mock all HTTP calls. Omit `--create` for integration paths (`ZEPHYR_DRY_RUN` is proposed, not implemented). Validate with trial when ready.
 
 3. **Zephyr Scale Cloud sandbox** — SmartBear may provide sandbox/demo instances for integration development. Worth checking.
 
@@ -1082,16 +1083,16 @@ Dashboard: same panels, filtered by platform
 
 | Phase | How |
 |---|---|
-| Build | Mock-based unit tests. `DRY_RUN=true` for all integration code. |
+| Build | Mock-based unit tests. Omit `--create` for all integration code (the only existing write guard; `DRY_RUN` flags are proposed, not implemented). |
 | Validate | 30-day Zephyr trial on free Atlassian dev instance. Run all paths end-to-end. |
-| Ongoing | `DRY_RUN=true` in CI. Real calls only in manual/staging workflows. |
+| Ongoing | Omit `--create` in CI. Real calls only in manual/staging workflows that pass `--create`. |
 
 ### Reference implementation
 
 test-forge already has Zephyr Scale API integration in `skills/jira-test-gen/sections/write.md`:
 - Test case creation with priority mapping
 - Idempotency guard (duplicate detection by name)
-- Rate limiting (0.3s between calls, exponential backoff on 429)
+- Rate limiting (0.3s between calls when creating more than 5 cases; on 429, waits 10s and retries once)
 - Graceful skip if token not set
 
 This code serves as the reference for building execution reporting in both Playwright frameworks.
@@ -1100,7 +1101,7 @@ This code serves as the reference for building execution reporting in both Playw
 
 ## Environment Variables (all modules, all providers)
 
-All variables default to disabled. Zero overhead when not configured.
+Most variables default to disabled. Leaving configuration unset is not zero overhead: dependency scanning, secret scanning and the dashboard default to `true`.
 
 ### Provider-agnostic (module-level)
 
