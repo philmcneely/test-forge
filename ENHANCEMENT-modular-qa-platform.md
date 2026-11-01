@@ -1101,7 +1101,15 @@ This code serves as the reference for building execution reporting in both Playw
 
 ## Environment Variables (all modules, all providers)
 
-Most variables default to disabled. Leaving configuration unset is not zero overhead: dependency scanning, secret scanning and the dashboard default to `true`.
+Module `*_ENABLED` switches default to `false`, with three exceptions that default to `true`, so leaving configuration unset is not zero overhead:
+
+| Default-on setting | Why |
+|---|---|
+| `DEPENDENCY_SCAN_ENABLED` | Security scanning is on unless turned off |
+| `SECRET_SCAN_ENABLED` | Security scanning is on unless turned off |
+| `DASHBOARD_ENABLED` | The server serves its dashboard by default |
+
+Two non-switch safety settings also default to `true`: `TEST_DATA_CLEANUP` (clean up after the suite) and `DB_VALIDATION_READONLY` (SELECT-only queries).
 
 ### Provider-agnostic (module-level)
 
